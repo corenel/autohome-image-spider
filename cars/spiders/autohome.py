@@ -1,7 +1,9 @@
 """Spider for autohome."""
 
 import scrapy
+from scrapy.loader import ItemLoader
 
+from cars.items import CarsItem
 from misc.utils import str_to_dict
 
 
@@ -9,39 +11,137 @@ class AutohomeSpider(scrapy.Spider):
     """Spider subclass for autohome."""
 
     name = "autohome"
+    website = "http://car.autohome.com.cn"
+    brand_id_dict = {}
+    fct_id_dict = {}
+    series_id_dict = {}
+    spec_id_dict = {}
 
     def start_requests(self):
         """Return an iterable of Requests which spider will crawl from."""
-        brand_ids = [
-            33,  # 奥迪
-            15,  # 宝马
-            36,  # 奔驰
-            44,  # 捷豹路虎
-            52,  # 雷克萨斯
-            70,  # 沃尔沃
-            47,  # 凯迪拉克
-            40,  # 保时捷
-            42,  # 法拉利
-            73,  # 英菲尼迪
-            169,  # DS
-            51,  # 林肯
-            57,  # 玛莎拉蒂
-            133,  # 特斯拉
-            39,  # 宾利
-            54,  # 劳斯莱斯
-            48,  # 兰博基尼
+        selected_brand_ids = [
+            33,
+            15,
+            36,
+            44,
+            52,
+            70,
+            47,
+            40,
+            42,
+            73,
+            169,
+            51,
+            57,
+            133,
+            39,
+            54,
+            48,
         ]
         brand_url = "http://car.autohome.com.cn/pic/brand-{}.html"
 
-        for brand_id in brand_ids:
+        for brand_id in selected_brand_ids:
             yield scrapy.Request(url=brand_url.format(brand_id),
                                  callback=self.parse)
 
     def parse(self, response):
         """Handle the response downloaded for each of the requests made."""
-        car_model = response.xpath(
-            "//script[contains(.,'__CarModel')]").re("{.*}")[0]
-        filename = "car_model.log"
-        with open(filename, 'a') as f:
-            f.writelines("'{}'\n".format(car_model))
-        self.log('Saved file %s' % filename)
+        # get car model dict of brand
+        car_model = str_to_dict(response.xpath(
+            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+        # self.logger.info("Parsing brand {} - {}"
+        #                  .format(car_model["carBrandId"],
+        #                          car_model["carBrandName"]))
+        self.fct_id_dict[car_model["carBrandId"]] = car_model["carBrandName"]
+
+        # iterate fct links
+        fct_links = response.xpath(
+            "//div[@class='cartab-title']/h2/a/@href").extract()
+        if fct_links:
+            for link in fct_links:
+                request = scrapy.Request(
+                    self.website + link, callback=self.parse_fct)
+                yield request
+
+    def parse_fct(self, response):
+        """Parse factory page and get series list."""
+        # get car model dict of factory
+        car_model = str_to_dict(response.xpath(
+            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+        # self.logger.info("--> Parsing factory {} - {}"
+        #                  .format(car_model["carFctId"],
+        #                          car_model["carFctName"]))
+        self.brand_id_dict[car_model["carFctId"]] = car_model["carFctName"]
+
+        # iterate fct links
+        series_links = response.xpath(
+            "//span/a[contains(@href,'/pic/series/')]/@href").extract()
+        if series_links:
+            for link in series_links:
+                request = scrapy.Request(
+                    self.website + link, callback=self.parse_series)
+                yield request
+
+    def parse_series(self, response):
+        """Parse series page and get spec list."""
+        # get car model dict of series
+        car_model = str_to_dict(response.xpath(
+            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+        # self.logger.info("----> Parsing series {} - {}"
+        #                  .format(car_model["carSeriesId"],
+        #                          car_model["carSeriesName"]))
+        self.series_id_dict[car_model["carSeriesId"]] = \
+            car_model["carSeriesName"]
+
+        # iterate series links
+        spec_links = response.xpath(
+            "//div/a[contains(@href,'/photo/series/')]/@href").extract()
+        if spec_links:
+            for link in spec_links:
+                request = scrapy.Request(
+                    self.website + link, callback=self.parse_spec)
+                yield request
+
+    def parse_spec(self, response):
+        """Parse spec page and return CarsItem."""
+        # get car model dict of spec
+        car_model = str_to_dict(response.xpath(
+            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+
+        # get spec info
+        brand_id = int(response.xpath(
+            "//div[@class='breadnav']"
+            "/a[contains(@href,'/pic/brand')]/@href").re('[0-9]+')[0])
+        fct_id = None
+        series_id = car_model["CarSeriesId"]
+        spec_id = car_model["CarSpec"]
+        spec_name = response.xpath(
+            "//div[@class='breadnav']"
+            "/a[contains(@href,'/pic/series-')]/text()").extract()[0]
+        color = car_model["CarColorId"]
+        inner_color = car_model["CarInnerColorId"]
+
+        # save spec dict
+        self.spec_id_dict[spec_id] = spec_name
+
+        # get image info
+        image_id = car_model["CarImgId"]
+        is_first_img = bool(car_model["CarIsFirstPic"])
+        is_last_img = bool(car_model["CarIsLastPic"])
+        spec_is_stop = car_model["CarSpecIsStop"]
+        image_url = "http:" + \
+            response.xpath("//img[@id='img']/@src").extract()[0]
+
+        # add to item
+        item_loader = ItemLoader(item=CarsItem(), response=response)
+        item_loader.add_value('brand_id', brand_id)
+        item_loader.add_value('fct_id', fct_id)
+        item_loader.add_value('series_id', series_id)
+        item_loader.add_value('spec_id', spec_id)
+        item_loader.add_value('image_url', image_url)
+        item_loader.add_value('color', color)
+        item_loader.add_value('inner_color', inner_color)
+        item_loader.add_value('image_id', image_id)
+        item_loader.add_value('is_first_img', is_first_img)
+        item_loader.add_value('is_last_img', is_last_img)
+        item_loader.add_value('spec_is_stop', spec_is_stop)
