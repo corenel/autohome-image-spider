@@ -4,7 +4,7 @@ import scrapy
 from scrapy.loader import ItemLoader
 
 from cars.items import CarsItem
-from misc.utils import str_to_dict
+from misc.utils import get_car_model
 
 
 class AutohomeSpider(scrapy.Spider):
@@ -47,8 +47,7 @@ class AutohomeSpider(scrapy.Spider):
     def parse(self, response):
         """Handle the response downloaded for each of the requests made."""
         # get car model dict of brand
-        car_model = str_to_dict(response.xpath(
-            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+        car_model = get_car_model(response)
         # self.logger.info("Parsing brand {} - {}"
         #                  .format(car_model["carBrandId"],
         #                          car_model["carBrandName"]))
@@ -66,8 +65,7 @@ class AutohomeSpider(scrapy.Spider):
     def parse_fct(self, response):
         """Parse factory page and get series list."""
         # get car model dict of factory
-        car_model = str_to_dict(response.xpath(
-            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+        car_model = get_car_model(response)
         # self.logger.info("--> Parsing factory {} - {}"
         #                  .format(car_model["carFctId"],
         #                          car_model["carFctName"]))
@@ -85,8 +83,7 @@ class AutohomeSpider(scrapy.Spider):
     def parse_series(self, response):
         """Parse series page and get spec list."""
         # get car model dict of series
-        car_model = str_to_dict(response.xpath(
-            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+        car_model = get_car_model(response)
         # self.logger.info("----> Parsing series {} - {}"
         #                  .format(car_model["carSeriesId"],
         #                          car_model["carSeriesName"]))
@@ -105,8 +102,7 @@ class AutohomeSpider(scrapy.Spider):
     def parse_spec(self, response):
         """Parse spec page and return CarsItem."""
         # get car model dict of spec
-        car_model = str_to_dict(response.xpath(
-            "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
+        car_model = get_car_model(response)
 
         # get spec info
         brand_id = int(response.xpath(
@@ -131,6 +127,14 @@ class AutohomeSpider(scrapy.Spider):
         spec_is_stop = car_model["CarSpecIsStop"]
         image_url = "http:" + \
             response.xpath("//img[@id='img']/@src").extract()[0]
+        next_url = response.xpath("//script[contains(.,'nexturl = ')]/text()")\
+            .re("nexturl = '(.+)'")[0]
+
+        # go to next image
+        if not is_last_img:
+            request = scrapy.Request(
+                self.website + next_url, callback=self.parse_spec)
+            yield request
 
         # add to item
         item_loader = ItemLoader(item=CarsItem(), response=response)
@@ -145,3 +149,5 @@ class AutohomeSpider(scrapy.Spider):
         item_loader.add_value('is_first_img', is_first_img)
         item_loader.add_value('is_last_img', is_last_img)
         item_loader.add_value('spec_is_stop', spec_is_stop)
+
+        # return item_loader.load_item()
