@@ -12,31 +12,32 @@ class AutohomeSpider(scrapy.Spider):
 
     name = "autohome"
     website = "http://car.autohome.com.cn"
-    brand_id_dict = {}
-    fct_id_dict = {}
-    series_id_dict = {}
-    spec_id_dict = {}
+    brand_name_dict = {}
+    fct_name_dict = {}
+    series_name_dict = {}
+    spec_name_dict = {}
+    series_to_fct_dict = {}
 
     def start_requests(self):
         """Return an iterable of Requests which spider will crawl from."""
         selected_brand_ids = [
             33,
-            15,
-            36,
-            44,
-            52,
-            70,
-            47,
-            40,
-            42,
-            73,
-            169,
-            51,
-            57,
-            133,
-            39,
-            54,
-            48,
+            # 15,
+            # 36,
+            # 44,
+            # 52,
+            # 70,
+            # 47,
+            # 40,
+            # 42,
+            # 73,
+            # 169,
+            # 51,
+            # 57,
+            # 133,
+            # 39,
+            # 54,
+            # 48,
         ]
         brand_url = "http://car.autohome.com.cn/pic/brand-{}.html"
 
@@ -51,7 +52,8 @@ class AutohomeSpider(scrapy.Spider):
         # self.logger.info("Parsing brand {} - {}"
         #                  .format(car_model["carBrandId"],
         #                          car_model["carBrandName"]))
-        self.fct_id_dict[car_model["carBrandId"]] = car_model["carBrandName"]
+        brand_id = int(car_model["carBrandId"])
+        self.fct_name_dict[brand_id] = car_model["carBrandName"]
 
         # iterate fct links
         fct_links = response.xpath(
@@ -69,7 +71,8 @@ class AutohomeSpider(scrapy.Spider):
         # self.logger.info("--> Parsing factory {} - {}"
         #                  .format(car_model["carFctId"],
         #                          car_model["carFctName"]))
-        self.brand_id_dict[car_model["carFctId"]] = car_model["carFctName"]
+        fct_id = int(car_model["carFctId"])
+        self.brand_name_dict[fct_id] = car_model["carFctName"]
 
         # iterate fct links
         series_links = response.xpath(
@@ -87,12 +90,14 @@ class AutohomeSpider(scrapy.Spider):
         # self.logger.info("----> Parsing series {} - {}"
         #                  .format(car_model["carSeriesId"],
         #                          car_model["carSeriesName"]))
-        self.series_id_dict[car_model["carSeriesId"]] = \
-            car_model["carSeriesName"]
+        fct_id = int(car_model["carSeriesId"])
+        series_id = int(car_model["carSeriesId"])
+        self.series_name_dict[series_id] = car_model["carSeriesName"]
+        self.series_to_fct_dict[series_id] = fct_id
 
         # iterate series links
         spec_links = response.xpath(
-            "//div/a[contains(@href,'/photo/series/')]/@href").extract()
+            "//div/a[contains(@href,'/photo/series/')]/@href").re("(.+.html)")
         if spec_links:
             for link in spec_links:
                 request = scrapy.Request(
@@ -106,11 +111,11 @@ class AutohomeSpider(scrapy.Spider):
 
         # get spec info
         brand_id = int(response.xpath(
-            "//div[@class='breadnav']"
-            "/a[contains(@href,'/pic/brand')]/@href").re('[0-9]+')[0])
-        fct_id = None
-        series_id = car_model["CarSeriesId"]
-        spec_id = car_model["CarSpec"]
+            "//div[@class='breadnav']/a[contains(@href,'/pic/brand')]/@href")
+            .re('[0-9]+')[0])
+        fct_id = self.series_to_fct_dict[car_model["CarSeriesId"]]
+        series_id = int(car_model["CarSeriesId"])
+        spec_id = int(car_model["CarSpec"])
         spec_name = response.xpath(
             "//div[@class='breadnav']"
             "/a[contains(@href,'/pic/series-')]/text()").extract()[0]
@@ -118,7 +123,8 @@ class AutohomeSpider(scrapy.Spider):
         inner_color = car_model["CarInnerColorId"]
 
         # save spec dict
-        self.spec_id_dict[spec_id] = spec_name
+        if spec_id not in self.spec_name_dict:
+            self.spec_name_dict[spec_id] = spec_name
 
         # get image info
         image_id = car_model["CarImgId"]
@@ -127,27 +133,37 @@ class AutohomeSpider(scrapy.Spider):
         spec_is_stop = car_model["CarSpecIsStop"]
         image_url = "http:" + \
             response.xpath("//img[@id='img']/@src").extract()[0]
-        next_url = response.xpath("//script[contains(.,'nexturl = ')]/text()")\
-            .re("nexturl = '(.+)'")[0]
+        next_url = response.xpath(
+            "//script[contains(.,'nexturl')]").re("nexturl = '(.+)'")[0]
+
+        # output
+        print("parsing {}-{}-{}-{}-{}: {}".format(
+            self.brand_name_dict[brand_id],
+            self.fct_name_dict[fct_id],
+            self.series_name_dict[series_id],
+            self.spec_name_dict[spec_id],
+            image_id,
+            image_url))
+
+        # add to item
+        item = CarsItem()
+        item["brand_id"] = brand_id
+        item["fct_id"] = fct_id
+        item["series_id"] = series_id
+        item["spec_id"] = spec_id
+        item["image_url"] = image_url
+        item["color"] = color
+        item["inner_color"] = inner_color
+        item["image_id"] = image_id
+        item["is_first_img"] = is_first_img
+        item["is_last_img"] = is_last_img
+        item["spec_is_stop"] = spec_is_stop
+        yield item
 
         # go to next image
         if not is_last_img:
             request = scrapy.Request(
                 self.website + next_url, callback=self.parse_spec)
             yield request
-
-        # add to item
-        item_loader = ItemLoader(item=CarsItem(), response=response)
-        item_loader.add_value('brand_id', brand_id)
-        item_loader.add_value('fct_id', fct_id)
-        item_loader.add_value('series_id', series_id)
-        item_loader.add_value('spec_id', spec_id)
-        item_loader.add_value('image_url', image_url)
-        item_loader.add_value('color', color)
-        item_loader.add_value('inner_color', inner_color)
-        item_loader.add_value('image_id', image_id)
-        item_loader.add_value('is_first_img', is_first_img)
-        item_loader.add_value('is_last_img', is_last_img)
-        item_loader.add_value('spec_is_stop', spec_is_stop)
-
-        # return item_loader.load_item()
+        else:
+            return
