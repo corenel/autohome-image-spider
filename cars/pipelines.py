@@ -109,18 +109,16 @@ class ImagesDownloadPipeline(ImagesPipeline):
         if not image_paths:
             raise DropItem("Item contains no images")
 
-        if os.path.exists(image_raw_path):
+        if os.path.exists(image_raw_path) and not os.path.exists(image_path):
             shutil.move(image_raw_path, image_path)
-        else:
-            print("{} not exists".format(image_raw_path))
+            print("download {}-{}-{}-{}-{}-{} to {}".format(
+                item["brand_id"],
+                item["fct_id"],
+                item["series_id"],
+                item["spec_id"],
+                item["image_type"],
+                item["image_id"],
+                item["image_path"]))
 
         item['image_path'] = image_path
-        print("download {}-{}-{}-{}-{}-{} to {}".format(
-            item["brand_id"],
-            item["fct_id"],
-            item["series_id"],
-            item["spec_id"],
-            item["image_type"],
-            item["image_id"],
-            item["image_path"]))
         return item
