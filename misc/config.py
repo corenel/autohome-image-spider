@@ -9,6 +9,7 @@ csv_root = os.path.join(data_root, "csv")
 image_root = os.path.join(data_root, "image")
 image_raw_root = os.path.join(data_root, "image_raw")
 
+
 # selected
 selected_brand_ids = [
     33,

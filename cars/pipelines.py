@@ -11,6 +11,7 @@ from scrapy.exceptions import DropItem
 from scrapy.pipelines.images import ImagesPipeline
 
 import misc.config as cfg
+from misc.utils import save_dict
 
 
 class ImageCrawlPipeline(object):
@@ -33,27 +34,47 @@ class DataWritePipeline(object):
 
     def __init__(self):
         """Init DataWritePipeline."""
-        self.writer = None
-        if os.path.isdir(cfg.csv_root):
-            pass
-        else:
+        self.item_writer = None
+        self.brand_name_dict = {}
+        self.fct_name_dict = {}
+        self.series_name_dict = {}
+        self.spec_name_dict = {}
+        if not os.path.isdir(cfg.csv_root):
             os.makedirs(cfg.csv_root)
-        self.fn = os.path.join(cfg.csv_root,
-                               "{}.csv".format(
-                                   time.strftime("%Y%m%d%H%M%S",
-                                                 time.localtime())))
+        self.time = time.strftime("%Y%m%d%H%M%S", time.localtime())
+        self.item_fn = os.path.join(cfg.csv_root,
+                                    "{}_item.csv".format(self.time))
+        self.dict_fn = os.path.join(cfg.csv_root,
+                                    "{}_dict.csv".format(self.time))
+        self.dict_path = os.path.join(cfg.csv_root,
+                                      "{}".format(self.time) + "_{}.pkl")
 
     def process_item(self, item, spider):
         """Process item."""
-        if self.writer is None:
-            self.writer = csv.writer(open(self.fn, 'a'))
-        self.writer.writerow([item["brand_id"],
-                              item["fct_id"],
-                              item["series_id"],
-                              item["spec_id"],
-                              item["image_type"],
-                              item["image_id"],
-                              item["image_url"]])
+        if self.item_writer is None:
+            self.item_writer = csv.writer(open(self.item_fn, 'a'))
+        self.item_writer.writerow([item["brand_id"],
+                                   item["fct_id"],
+                                   item["series_id"],
+                                   item["spec_id"],
+                                   item["image_type"],
+                                   item["image_id"],
+                                   item["image_url"]])
+
+        save_dict(self.brand_name_dict, spider.brand_name_dict,
+                  self.dict_path.format("brand_name_dict"))
+        save_dict(self.fct_name_dict, spider.fct_name_dict,
+                  self.dict_path.format("fct_name_dict"))
+        save_dict(self.series_name_dict, spider.series_name_dict,
+                  self.dict_path.format("series_name_dict"))
+        save_dict(self.spec_name_dict, spider.spec_name_dict,
+                  self.dict_path.format("spec_name_dict"))
+
+        self.brand_name_dict = spider.brand_name_dict
+        self.fct_name_dict = spider.fct_name_dict
+        self.series_name_dict = spider.series_name_dict
+        self.spec_name_dict = spider.spec_name_dict
+
         return item
 
 

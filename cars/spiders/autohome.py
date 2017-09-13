@@ -1,7 +1,6 @@
 """Spider for autohome."""
 
 import scrapy
-from scrapy.loader import ItemLoader
 
 import misc.config as cfg
 from cars.items import CarsItem
@@ -13,12 +12,12 @@ class AutohomeSpider(scrapy.Spider):
 
     name = "autohome"
     website = "http://car.autohome.com.cn"
+    brand_url = "http://car.autohome.com.cn/pic/brand-{}.html"
     brand_name_dict = {}
     fct_name_dict = {}
     series_name_dict = {}
     spec_name_dict = {}
     series_to_fct_dict = {}
-    brand_url = "http://car.autohome.com.cn/pic/brand-{}.html"
 
     def start_requests(self):
         """Return an iterable of Requests which spider will crawl from."""
@@ -38,7 +37,7 @@ class AutohomeSpider(scrapy.Spider):
 
         # iterate fct links
         fct_links = response.xpath(
-            "//div[@class='cartab-title']/h2/a/@href").extract()
+            "//div[@class='cartab-title']/h2/a/@href").re("(.+.html)")
         if fct_links:
             for link in fct_links:
                 request = scrapy.Request(
@@ -57,7 +56,8 @@ class AutohomeSpider(scrapy.Spider):
 
         # iterate fct links
         series_links = response.xpath(
-            "//span/a[contains(@href,'/pic/series/')]/@href").extract()
+            "//span/a[contains(@href,'/pic/series/')]/@href")\
+            .re("(.+.html)")
         if series_links:
             for link in series_links:
                 request = scrapy.Request(
@@ -78,12 +78,18 @@ class AutohomeSpider(scrapy.Spider):
 
         # iterate series links
         spec_links = response.xpath(
-            "//div/a[contains(@href,'/photo/series/')]/@href").re("(.+.html)")
+            "//div/a[contains(@href,'/photo/series/')]/@href")\
+            .re("(.+.html)")
+        # just one url and it iterates all images
+        # if spec_links:
+        #     for link in spec_links:
+        #         request = scrapy.Request(
+        #             self.website + link, callback=self.parse_spec)
+        #         yield request
         if spec_links:
-            for link in spec_links:
-                request = scrapy.Request(
-                    self.website + link, callback=self.parse_spec)
-                yield request
+            request = scrapy.Request(
+                self.website + spec_links[0], callback=self.parse_spec)
+            yield request
 
     def parse_spec(self, response):
         """Parse spec page and return CarsItem."""
