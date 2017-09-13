@@ -1,5 +1,7 @@
 """Spider for autohome."""
 
+import os
+
 import scrapy
 
 import misc.config as cfg
@@ -147,7 +149,15 @@ class AutohomeSpider(scrapy.Spider):
         item["is_first_img"] = is_first_img
         item["is_last_img"] = is_last_img
         item["spec_is_stop"] = spec_is_stop
-        if item["image_type"] in cfg.selected_image_types:
+        item_path = os.path.join(cfg.image_root,
+                                 str(item["brand_id"]),
+                                 str(item["fct_id"]),
+                                 str(item["series_id"]),
+                                 str(item["spec_id"]),
+                                 str(item["image_type"]),
+                                 "{}.jpg".format(item["image_id"]))
+        if item["image_type"] in cfg.selected_image_types \
+                and not os.path.exists(item_path):
             yield item
 
         # go to next image

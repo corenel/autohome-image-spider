@@ -118,7 +118,7 @@ class ImagesDownloadPipeline(ImagesPipeline):
                 item["spec_id"],
                 item["image_type"],
                 item["image_id"],
-                item["image_path"]))
+                image_path))
 
         item['image_path'] = image_path
         return item
