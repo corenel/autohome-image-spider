@@ -53,7 +53,7 @@ class AutohomeSpider(scrapy.Spider):
         #                  .format(car_model["carBrandId"],
         #                          car_model["carBrandName"]))
         brand_id = int(car_model["carBrandId"])
-        self.fct_name_dict[brand_id] = car_model["carBrandName"]
+        self.brand_name_dict[brand_id] = car_model["carBrandName"]
 
         # iterate fct links
         fct_links = response.xpath(
@@ -72,7 +72,7 @@ class AutohomeSpider(scrapy.Spider):
         #                  .format(car_model["carFctId"],
         #                          car_model["carFctName"]))
         fct_id = int(car_model["carFctId"])
-        self.brand_name_dict[fct_id] = car_model["carFctName"]
+        self.fct_name_dict[fct_id] = car_model["carFctName"]
 
         # iterate fct links
         series_links = response.xpath(
@@ -90,7 +90,7 @@ class AutohomeSpider(scrapy.Spider):
         # self.logger.info("----> Parsing series {} - {}"
         #                  .format(car_model["carSeriesId"],
         #                          car_model["carSeriesName"]))
-        fct_id = int(car_model["carSeriesId"])
+        fct_id = int(car_model["carFctId"])
         series_id = int(car_model["carSeriesId"])
         self.series_name_dict[series_id] = car_model["carSeriesName"]
         self.series_to_fct_dict[series_id] = fct_id
@@ -113,7 +113,7 @@ class AutohomeSpider(scrapy.Spider):
         brand_id = int(response.xpath(
             "//div[@class='breadnav']/a[contains(@href,'/pic/brand')]/@href")
             .re('[0-9]+')[0])
-        fct_id = self.series_to_fct_dict[car_model["CarSeriesId"]]
+        fct_id = int(self.series_to_fct_dict[car_model["CarSeriesId"]])
         series_id = int(car_model["CarSeriesId"])
         spec_id = int(car_model["CarSpec"])
         spec_name = response.xpath(
@@ -135,15 +135,6 @@ class AutohomeSpider(scrapy.Spider):
             response.xpath("//img[@id='img']/@src").extract()[0]
         next_url = response.xpath(
             "//script[contains(.,'nexturl')]").re("nexturl = '(.+)'")[0]
-
-        # output
-        print("parsing {}-{}-{}-{}-{}: {}".format(
-            self.brand_name_dict[brand_id],
-            self.fct_name_dict[fct_id],
-            self.series_name_dict[series_id],
-            self.spec_name_dict[spec_id],
-            image_id,
-            image_url))
 
         # add to item
         item = CarsItem()
