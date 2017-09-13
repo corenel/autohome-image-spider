@@ -16,11 +16,13 @@ class CarsItem(scrapy.Item):
     fct_id = scrapy.Field()
     series_id = scrapy.Field()
     spec_id = scrapy.Field()
+    # image
+    image_id = scrapy.Field()
+    image_type = scrapy.Field()
+    image_path = scrapy.Field()
     image_url = scrapy.Field()
     color = scrapy.Field()
     inner_color = scrapy.Field()
-    # image
-    image_id = scrapy.Field()
     is_first_img = scrapy.Field()
     is_last_img = scrapy.Field()
     spec_is_stop = scrapy.Field()

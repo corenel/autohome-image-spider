@@ -3,6 +3,7 @@
 import scrapy
 from scrapy.loader import ItemLoader
 
+import misc.config as cfg
 from cars.items import CarsItem
 from misc.utils import get_car_model
 
@@ -17,32 +18,12 @@ class AutohomeSpider(scrapy.Spider):
     series_name_dict = {}
     spec_name_dict = {}
     series_to_fct_dict = {}
+    brand_url = "http://car.autohome.com.cn/pic/brand-{}.html"
 
     def start_requests(self):
         """Return an iterable of Requests which spider will crawl from."""
-        selected_brand_ids = [
-            33,
-            # 15,
-            # 36,
-            # 44,
-            # 52,
-            # 70,
-            # 47,
-            # 40,
-            # 42,
-            # 73,
-            # 169,
-            # 51,
-            # 57,
-            # 133,
-            # 39,
-            # 54,
-            # 48,
-        ]
-        brand_url = "http://car.autohome.com.cn/pic/brand-{}.html"
-
-        for brand_id in selected_brand_ids:
-            yield scrapy.Request(url=brand_url.format(brand_id),
+        for brand_id in cfg.selected_brand_ids:
+            yield scrapy.Request(url=self.brand_url.format(brand_id),
                                  callback=self.parse)
 
     def parse(self, response):
@@ -127,7 +108,8 @@ class AutohomeSpider(scrapy.Spider):
             self.spec_name_dict[spec_id] = spec_name
 
         # get image info
-        image_id = car_model["CarImgId"]
+        image_id = int(car_model["CarImgId"])
+        image_type = int(car_model["CarPicTypeId"])
         is_first_img = bool(car_model["CarIsFirstPic"])
         is_last_img = bool(car_model["CarIsLastPic"])
         spec_is_stop = car_model["CarSpecIsStop"]
@@ -135,6 +117,15 @@ class AutohomeSpider(scrapy.Spider):
             response.xpath("//img[@id='img']/@src").extract()[0]
         next_url = response.xpath(
             "//script[contains(.,'nexturl')]").re("nexturl = '(.+)'")[0]
+
+        # output
+        # self.logger.info("parsing [{}][{}][{}][{}][{}]: {}".format(
+        #     self.brand_name_dict[brand_id],
+        #     self.fct_name_dict[fct_id],
+        #     self.series_name_dict[series_id],
+        #     self.spec_name_dict[spec_id],
+        #     image_id,
+        #     image_url))
 
         # add to item
         item = CarsItem()
@@ -146,10 +137,12 @@ class AutohomeSpider(scrapy.Spider):
         item["color"] = color
         item["inner_color"] = inner_color
         item["image_id"] = image_id
+        item["image_type"] = image_type
         item["is_first_img"] = is_first_img
         item["is_last_img"] = is_last_img
         item["spec_is_stop"] = spec_is_stop
-        yield item
+        if item["image_type"] in cfg.selected_image_types:
+            yield item
 
         # go to next image
         if not is_last_img:
