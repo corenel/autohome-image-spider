@@ -21,4 +21,7 @@ if __name__ == '__main__':
         "spec": spec
     }
 
+    for k, v in name_dict.items():
+        print("{}:{}".format(k, len(v)))
+
     torch.save(name_dict, "name_dict.pt")
