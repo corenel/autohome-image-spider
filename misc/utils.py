@@ -18,8 +18,9 @@ def get_car_model(response):
         "//script[contains(.,'__CarModel')]/text()").re("{.*}")[0])
 
 
-def save_dict(dict_a, dict_b, filepath):
+def save_dict(dict_b, length, filepath):
     """Save dict if they're not equal."""
-    if dict_a != dict_b:
+    if len(dict_b) != length:
         with open(filepath, 'wb') as f:
             pickle.dump(dict_b, f, protocol=pickle.HIGHEST_PROTOCOL)
+        print("update: {}".format(filepath))

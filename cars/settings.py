@@ -69,8 +69,8 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'cars.pipelines.DataWritePipeline': 1,
-    'cars.pipelines.ImagesDownloadPipeline': 1
+    'cars.pipelines.DataWritePipeline': 1
+    # 'cars.pipelines.ImagesDownloadPipeline': 1
 }
 IMAGES_STORE = cfg.image_raw_root
 

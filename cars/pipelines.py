@@ -35,10 +35,10 @@ class DataWritePipeline(object):
     def __init__(self):
         """Init DataWritePipeline."""
         self.item_writer = None
-        self.brand_name_dict = {}
-        self.fct_name_dict = {}
-        self.series_name_dict = {}
-        self.spec_name_dict = {}
+        self.num_brand = 0
+        self.num_fct = 0
+        self.num_series = 0
+        self.num_spec = 0
         if not os.path.isdir(cfg.csv_root):
             os.makedirs(cfg.csv_root)
         self.time = time.strftime("%Y%m%d%H%M%S", time.localtime())
@@ -61,19 +61,19 @@ class DataWritePipeline(object):
                                    item["image_id"],
                                    item["image_url"]])
 
-        save_dict(self.brand_name_dict, spider.brand_name_dict,
+        save_dict(spider.brand_name_dict, self.num_brand,
                   self.dict_path.format("brand_name_dict"))
-        save_dict(self.fct_name_dict, spider.fct_name_dict,
+        save_dict(spider.fct_name_dict, self.num_fct,
                   self.dict_path.format("fct_name_dict"))
-        save_dict(self.series_name_dict, spider.series_name_dict,
+        save_dict(spider.series_name_dict, self.num_series,
                   self.dict_path.format("series_name_dict"))
-        save_dict(self.spec_name_dict, spider.spec_name_dict,
+        save_dict(spider.spec_name_dict, self.num_spec,
                   self.dict_path.format("spec_name_dict"))
 
-        self.brand_name_dict = spider.brand_name_dict
-        self.fct_name_dict = spider.fct_name_dict
-        self.series_name_dict = spider.series_name_dict
-        self.spec_name_dict = spider.spec_name_dict
+        self.num_brand = len(spider.brand_name_dict)
+        self.num_fct = len(spider.fct_name_dict)
+        self.num_series = len(spider.fct_name_dict)
+        self.num_spec = len(spider.spec_name_dict)
 
         return item
 
