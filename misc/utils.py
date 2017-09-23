@@ -23,4 +23,4 @@ def save_dict(dict_b, length, filepath):
     if len(dict_b) != length:
         with open(filepath, 'wb') as f:
             pickle.dump(dict_b, f, protocol=pickle.HIGHEST_PROTOCOL)
-        print("update({}): {}".format(len(dict_b), filepath))
+        # print("update({}): {}".format(len(dict_b), filepath))

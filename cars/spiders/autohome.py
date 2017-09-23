@@ -1,6 +1,7 @@
 """Spider for autohome."""
 
 import os
+import re
 
 import scrapy
 
@@ -60,8 +61,15 @@ class AutohomeSpider(scrapy.Spider):
         series_links = response.xpath(
             "//span/a[contains(@href,'/pic/series/')]/@href")\
             .re("(.+.html)")
-        if series_links:
+        series_t_links = ["/pic/series/{}.html"
+                          .format(re.findall("\/pic\/series\/(\d+).html",
+                                             s)[0]) for s in series_links]
+        if series_links and series_t_links:
             for link in series_links:
+                request = scrapy.Request(
+                    self.website + link, callback=self.parse_series)
+                yield request
+            for link in series_t_links:
                 request = scrapy.Request(
                     self.website + link, callback=self.parse_series)
                 yield request
