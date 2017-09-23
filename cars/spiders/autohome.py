@@ -61,15 +61,12 @@ class AutohomeSpider(scrapy.Spider):
         series_links = response.xpath(
             "//span/a[contains(@href,'/pic/series/')]/@href")\
             .re("(.+.html)")
-        series_t_links = ["/pic/series/{}.html"
+        series_t_links = ["/pic/series-t/{}.html"
                           .format(re.findall("\/pic\/series\/(\d+).html",
                                              s)[0]) for s in series_links]
-        if series_links and series_t_links:
-            for link in series_links:
-                request = scrapy.Request(
-                    self.website + link, callback=self.parse_series)
-                yield request
-            for link in series_t_links:
+        total_links = series_links + series_t_links
+        if total_links:
+            for link in total_links:
                 request = scrapy.Request(
                     self.website + link, callback=self.parse_series)
                 yield request
@@ -133,6 +130,7 @@ class AutohomeSpider(scrapy.Spider):
             response.xpath("//img[@id='img']/@src").extract()[0]
         next_url = response.xpath(
             "//script[contains(.,'nexturl')]").re("nexturl = '(.+)'")[0]
+        next_cata = int(re.findall("(\d+)\/\d+.html", next_url)[0])
 
         # output
         # self.logger.info("parsing [{}][{}][{}][{}][{}]: {}".format(
@@ -169,7 +167,7 @@ class AutohomeSpider(scrapy.Spider):
             yield item
 
         # go to next image
-        if not is_last_img:
+        if not is_last_img and next_cata in cfg.selected_image_types:
             request = scrapy.Request(
                 self.website + next_url, callback=self.parse_spec)
             yield request
